@@ -1,6 +1,15 @@
 import dotnev from 'dotenv';
 dotnev.config()
 import { Agent, run, tool } from '@openai/agents';
+import nodemailer from 'nodemailer'
+const transporter = nodemailer.createTransport({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    auth: {
+        user: 'vance72@ethereal.email',
+        pass: 'HrA4MesvXEdMHnbJAa'
+    }
+})
 
 
 interface SendEmail {
@@ -13,22 +22,37 @@ const sendEmail = tool({
     parameters: {
         type: "object",
         properties: {
+            subject: {
+                type: 'string',
+                description: "The subject for the email to send the email"
+            },
             body: {
                 type: "string",
                 description: "The email address or content to send the email to"
             }
         },
-        required: ["body"],
+        required: ["body", "subject"],
         additionalProperties: false
     },
     strict: true,
     execute: async (input: any): Promise<SendEmail> => {
-        const { body } = input as { body: string };
+        const { body, subject } = input as { body: string, subject: string };
         console.log("Function sendEmail has been called with body: " + body);
-        return {
-            status: `Email has been sent to ${body}`,
-            sucess: true  // Consider changing to `success`
-        };
+        try {
+            const info = await transporter.sendMail({
+                from: "vance <vance72@ethereal.email>",
+                to: "test@gmail.com",
+                subject: subject,
+                html: body
+            })
+            return {
+                status: `Email has been sent with ${info.messageId}`,
+                sucess: true
+            };
+        } catch (error) {
+            console.error("Error while sending the mail")
+            throw error;
+        }
     }
 });
 let instructions_1: string = "You are a sales agent working for ComplAI, \
@@ -43,18 +67,18 @@ You write concise, to the point cold emails."
 
 const email_agent_1 = new Agent({
     name: "email-agent-01",
-    model: "gpt-4.1-nano-2025-04-14",
+    model: process.env.MODEL_NAME,
     instructions: instructions_1
 })
 
 const email_agent_2 = new Agent({
     name: "email-agent-02",
-    model: "gpt-4.1-nano-2025-04-14",
+    model: process.env.MODEL_NAME,
     instructions: instructions_2
 })
 const email_agent_3 = new Agent({
     name: "email-agent-03",
-    model: "gpt-4.1-nano-2025-04-14",
+    model: process.env.MODEL_NAME,
     instructions: instructions_3
 })
 const email_agent_tool_1 = email_agent_1.asTool({
@@ -65,7 +89,7 @@ const email_agent_tool_2 = email_agent_2.asTool({
     toolName: "sales_agent2",
     toolDescription: "Write cold email",
 })
-const email_agent_tool_3: Tool = email_agent_3.asTool({
+const email_agent_tool_3 = email_agent_3.asTool({
     toolName: "sales_agent3",
     toolDescription: "Write cold email",
 })
@@ -76,10 +100,6 @@ You try all 3 sales_agent tools once before choosing the best one. \
 You pick the single best email and use the send_email tool to send the best email (and only the best email) to the user. Again you have to pick the best mail shouldn't send the the three mail's"
 
 
-let message: string = "Send the best mail to the  test@gmail.com'"
-// const result = await run(managerAgent, message)
-
-// console.log(result)
 
 let subject_instructions: string = "You can write a subject for a cold sales email. \
 You are given a message and you need to write a subject for an email that is likely to get a response"
@@ -90,7 +110,7 @@ and you need to convert it to an HTML email body with simple, clear, compelling 
 const subject_tool = new Agent({
     name: "subject_agent",
     instructions: subject_instructions,
-    model: "gpt-4.1-nano-2025-04-14"
+    model: process.env.MODEL_NAME
 }).asTool({
     toolName: "subject_tool",
     toolDescription: "Write subject from the given mail"
@@ -98,7 +118,7 @@ const subject_tool = new Agent({
 const html_convertor_tool = new Agent({
     name: "html_convertor_agent",
     instructions: html_instructions,
-    model: "gpt-4.1-nano-2025-04-14"
+    model: process.env.MODEL_NAME
 }).asTool({
     toolName: "html_convertor_tool",
     toolDescription: "Converts the body of the email form text to html"
@@ -107,14 +127,14 @@ const html_convertor_tool = new Agent({
 let new_tools = [subject_tool, html_convertor_tool, sendEmail]
 
 let email_sender_instructions: string = "You are an email formatter and sender. You receive the body of an email to be sent. \
-You first use the subject_writer tool to write a subject for the email, then use the html_converter tool to convert the body to HTML. \
-Finally, you use the send_html_email tool to send the email with the subject and HTML body."
+You first use the subject_tool tool to write a subject for the email, then use the html_convertor_tool tool to convert the body to HTML. \
+Finally, you use the sendEmail tool to send the email with the subject and HTML body. The sendEmail tool accepts the subject and body as parameters "
 
 const email_sender_agent: Agent = new Agent({
     name: "email_sender_agent",
     instructions: email_sender_instructions,
     tools: new_tools,
-    model: "gpt-4.1-nano-2025-04-14",
+    model: process.env.MODEL_NAME,
     handoffDescription: "Convert an email to HTML and send it"
 })
 const handoffs: Array<Agent> = [email_sender_agent]
@@ -129,13 +149,13 @@ const managerAgent: Agent = new Agent({
     name: "manager_agent",
     instructions: manager_instructions,
     tools: tools,
-    model: "gpt-4.1-nano-2025-04-14",
+    model: process.env.MODEL_NAME,
     handoffs: handoffs
 })
 
 const prompt: string = "Send out a cold sales email addressed to Dear CEO from Alice to test@gmail.com"
 
-const result = await run(managerAgent, message = prompt)
+const result = await run(managerAgent, prompt)
 
 console.log("=".repeat(50))
 console.log(result)
