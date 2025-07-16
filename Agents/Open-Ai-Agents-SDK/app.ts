@@ -1,6 +1,7 @@
 import dotnev from 'dotenv';
 dotnev.config()
-import { Agent, run, tool } from '@openai/agents';
+import { Agent, InputGuardrailTripwireTriggered, run, tool } from '@openai/agents';
+import { boolean, tuple, z } from "zod"
 import nodemailer from 'nodemailer'
 const transporter = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
@@ -145,21 +146,66 @@ You can use the tools multiple times if you're not satisfied with the results fr
 You select the single best email using your own judgement of which email will be most effective. \
 After picking the email, you handoff to the Email Manager agent to format and send the email."
 
+// const managerAgent: Agent = new Agent({
+//     name: "manager_agent",
+//     instructions: manager_instructions,
+//     tools: tools,
+//     model: process.env.MODEL_NAME,
+//     handoffs: handoffs
+// })
+
+// const prompt: string = "Send out a cold sales email addressed to Dear CEO from Alice to test@gmail.com"
+
+// const result = await run(managerAgent, prompt)
+
+// console.log("=".repeat(50))
+// console.log(result)
+// console.log("=".repeat(50))
+
+//The output here we are mentioning is for GuardRail Agent outpu 
+const checkEmailIncluded = new Agent({
+    name: "checkEmailInlcuded",
+    instructions: "Check if the prompt doesn't includes a emaild id for sending the marketing mails. we need an email to send the marketing mails",
+    outputType: z.object({
+        isMailIncluded: z.boolean(),
+        reasoning: z.string()
+    })
+})
+
+const checkEmailGuardRail = {
+    name: "Check Email GuardRail",
+    execute: async ({ input, context }) => {
+        const res = await run(checkEmailIncluded, input, { context })
+        return {
+            tripwireTriggered: res.finalOutput?.isMailIncluded == true ? false : true,
+            outputInfo: res.finalOutput?.reasoning ?? ""
+        }
+    }
+}
+
+
+
 const managerAgent: Agent = new Agent({
     name: "manager_agent",
     instructions: manager_instructions,
     tools: tools,
     model: process.env.MODEL_NAME,
-    handoffs: handoffs
+    handoffs: handoffs,
+    inputGuardrails: [checkEmailGuardRail]
 })
 
-const prompt: string = "Send out a cold sales email addressed to Dear CEO from Alice to test@gmail.com"
+const prompt: string = "Send out a cold sales email addressed to Dear CEO from Alice to "
 
-const result = await run(managerAgent, prompt)
-
-console.log("=".repeat(50))
-console.log(result)
-console.log("=".repeat(50))
-
-
-
+const execute = async (prompt: string, managerAgent: Agent) => {
+    try {
+        const result = await run(managerAgent, prompt)
+        console.log("=".repeat(50))
+        console.log(result)
+        console.log("=".repeat(50))
+    } catch (e) {
+        if (e instanceof InputGuardrailTripwireTriggered) {
+            console.error("Input GuradRail Triggered " + e.cause)
+        }
+    }
+}
+const result = await execute(prompt, managerAgent)
