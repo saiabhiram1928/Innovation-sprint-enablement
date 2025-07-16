@@ -172,6 +172,8 @@ const checkEmailIncluded = new Agent({
     })
 })
 
+
+
 const checkEmailGuardRail = {
     name: "Check Email GuardRail",
     execute: async ({ input, context }) => {
@@ -183,8 +185,6 @@ const checkEmailGuardRail = {
     }
 }
 
-
-
 const managerAgent: Agent = new Agent({
     name: "manager_agent",
     instructions: manager_instructions,
@@ -194,11 +194,11 @@ const managerAgent: Agent = new Agent({
     inputGuardrails: [checkEmailGuardRail]
 })
 
-const prompt: string = "Send out a cold sales email addressed to Dear CEO from Alice to "
+const prompt: string = "Send out a cold sales email addressed to Dear CEO from Alice to test1@gmail.com "
 
 const execute = async (prompt: string, managerAgent: Agent) => {
     try {
-        const result = await run(managerAgent, prompt)
+        const result = await run(managerAgent, prompt, { stream: true })
         console.log("=".repeat(50))
         console.log(result)
         console.log("=".repeat(50))
@@ -208,4 +208,5 @@ const execute = async (prompt: string, managerAgent: Agent) => {
         }
     }
 }
+
 const result = await execute(prompt, managerAgent)
