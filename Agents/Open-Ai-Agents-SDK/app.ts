@@ -17,7 +17,7 @@ interface SendEmail {
     status: string,
     sucess: boolean
 }
-const sendEmail = tool({
+export const sendEmail = tool({
     name: "sendEmail",
     description: "Sends an email to the given address.",
     parameters: {
