@@ -1,0 +1,42 @@
+research_new_task:
+  description: >
+    Utilize available tools to search for and retrieve the top 10 most relevant news articles published today (or within the last 24 hours) on current global affairs and technology advancements. 
+    Focus on high-impact stories from reputable news sources. For each article, obtain its title, URL, and full content (if possible, or at least a substantial snippet)
+  expected_output: >
+    A structured list (e.g., JSON or markdown list) where each item contains the 'title', 'url', and 'content' (or 'snippet') of a news article. 
+    Prioritize articles that provide sufficient text for summarization and sentiment analysis.
+  agent: newsGatherAgent
+
+summarize_articles_task:
+  description: >
+    Based on the collected raw news articles from the previous research task, create a concise, 3-5 sentence summary for each article. 
+    Ensure the summaries are objective, capture the main points, and are easy to understand for a general audience. Do not add any personal opinions or external information.
+  expected_output: >
+    A structured list (e.g., JSON or markdown list) where each item includes the original 'title', 'url', and its newly generated 'summary'. The summaries must be clear and direct.
+  agent: articleSummarizerAgent
+  context:
+    - research_new_task
+
+analyze_sentiment_task:
+  description: >
+    For each summarized article provided, perform a sentiment analysis to determine if its tone is 'Positive', 'Neutral', or 'Negative'.
+    Provide a brief, one-sentence rationale for the sentiment classification. Focus on the factual presentation within the summary rather than external emotional bias
+  context:
+    - summarize_articles_task
+  agent: sentimentAnalyzerAgent
+  expected_output: >
+    A structured list (e.g., JSON or markdown list) where each item includes
+    the original 'title', 'summary', 'url', 'sentiment' (Positive/Neutral/Negative), and a short 'rationale' for the sentiment.
+
+format_digest_task:
+  description: >
+    Compile all the summarized articles with their sentiment analysis results into a coherent, professional, and visually appealing 'Daily News Digest'. 
+    The digest should be formatted clearly using Markdown. Include a main heading for the digest, subheadings for each article (with its title and URL), its summary, 
+    and its sentiment with the rationale. Ensure proper spacing and readability
+  expected_output: >
+    A comprehensive 'Daily News Digest' in Markdown format, incorporating all summarized articles, their sentiments, and rationales, presented 
+    in an organized and user-friendly layout. It should be ready for direct publication or distribution.
+  agent: digestFormatterAgent
+  context:
+    - analyze_sentiment_task
+  output_file: daily_new_summarize.docx
