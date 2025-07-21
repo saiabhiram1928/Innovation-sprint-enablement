@@ -1,7 +1,7 @@
 from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from typing import List
-from crewai_tools import DuckDuckGoSearchTool 
+from my_crew.tools.custom_tool import NewsSearchTool
 
 @CrewBase
 class MyCrew():
@@ -17,9 +17,9 @@ class MyCrew():
         return Agent(
             config=self.agents_config['news_gather'], # type: ignore[index]
             verbose=True,
-            tools = [DuckDuckGoSearchTool()],
+            tools = [NewsSearchTool()],
             vars= {
-                'topic': 'AI LLMs',
+                'topic': 'Top 10 frameworks for building AI agents',
                 'current_year': '2023'
             }
         )
@@ -48,7 +48,7 @@ class MyCrew():
     def research_new_task(self) -> Task:
         return Task(
             config=self.tasks_config['research_new_task'], # type: ignore[index]
-            tools = [DuckDuckGoSearchTool()]
+            tools = [NewsSearchTool()]
         )
 
     @task
