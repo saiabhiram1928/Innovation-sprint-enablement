@@ -7,6 +7,8 @@ from langchain_openai import ChatOpenAI
 from langgraph.graph import StateGraph, START ,END
 from langgraph.prebuilt import ToolNode
 from IPython.display import display , Image
+import gradio as gr
+from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
 def ReactAgent():
@@ -63,7 +65,29 @@ def ReactAgent():
     inputs = {"messages": [("user", "Add 40 + 12 and then multiply the result by 6. Also tell me a joke please.")]}
     print_stream(app.stream(inputs, stream_mode="values"))
 
+def memory_testing():
+    class State(TypedDict):
+        messages: Annotated[list[BaseMessage], add_messages]
+    graph = StateGraph(State)
+    memory = MemorySaver()
+    llm = ChatOpenAI(model= "gpt-4.1-nano")
+    def agent(state : State) -> State:
+        return {"messages" : [llm.invoke(state["messages"])]}
+    graph.add_node("agent", agent)
+    graph.set_entry_point("agent")
+    graph.set_finish_point("agent")
+    app = graph.compile(checkpointer= memory)
+
+    config = {"configurable" : {"thread_id" : "1"}}
+    with open("memory_implementation.png" , "wb") as f:
+        f.write(app.get_graph().draw_mermaid_png())
+    def chat(user_input : str, history):
+        res = app.invoke({"messages" : [HumanMessage(content= user_input)]}, config = config)
+        return res['messages'][-1].content
+    print(app.get_state(config= config))
+    gr.ChatInterface(chat, type= "messages").launch()
 
 
 if __name__ == "__main__":
-    ReactAgent()
+    # ReactAgent()
+    memory_testing()
