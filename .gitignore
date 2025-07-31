@@ -83,3 +83,4 @@ Thumbs.db
 .env
 .env.*
 
+Agents/McpServer/demo.db
